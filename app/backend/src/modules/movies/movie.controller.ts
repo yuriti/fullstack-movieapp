@@ -31,6 +31,7 @@ export class MovieController {
 
     @Get("preferred")
     @ApiOperation({ summary: "We get one preferred movie for the user relative to his selected genres" })
+    @ApiOkResponse({ type: MovieDTO })
     @ApiCookieAuth()
     @UseGuards(AuthGuard)
     async fetchPreferred(@AuthUser() user: User) {
