@@ -1,6 +1,7 @@
 import { Get, Injectable, NotFoundException } from "@nestjs/common";
 
 import { MOVIE_RATE } from "./movie.enum";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "~/database/prisma.service";
 import { TmdbService } from "~/modules/tmdb/tmdb.service";
 import { head } from "lodash";
@@ -10,7 +11,7 @@ import { randomInt } from "crypto";
 
 @Injectable()
 export class MovieService {
-    constructor(protected readonly prisma: PrismaService, protected readonly tmdb: TmdbService) {}
+    constructor(private readonly prisma: PrismaService, private readonly tmdb: TmdbService) {}
 
     // We get any movie without a specific sample
     async fetchOneRandom() {
@@ -33,14 +34,18 @@ export class MovieService {
     async rate(ctx: { userId: number; movieId: number; value: MOVIE_RATE }) {
         const item = await this.tmdb.api.movieInfo(ctx.movieId);
 
-        await Promise.all(
-            item.genres.map((genre) =>
-                this.prisma.userFavoriteGenres.upsert({
-                    where: { userId_genreId: { userId: ctx.userId, genreId: genre.id } },
-                    create: { userId: ctx.userId, genreId: genre.id, score: ctx.value },
-                    update: { score: { increment: ctx.value } },
-                })
-            )
+        await this.prisma.$transaction(
+            async (prisma) =>
+                Promise.all(
+                    item.genres.map((genre) =>
+                        prisma.userFavoriteGenres.upsert({
+                            where: { userId_genreId: { userId: ctx.userId, genreId: genre.id } },
+                            create: { userId: ctx.userId, genreId: genre.id, score: ctx.value },
+                            update: { score: { increment: ctx.value } },
+                        })
+                    )
+                ),
+            { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
         );
     }
 }

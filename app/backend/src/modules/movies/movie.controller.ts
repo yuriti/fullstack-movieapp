@@ -5,7 +5,7 @@ import { Body, Controller, Get, NotFoundException, Param, Post } from "@nestjs/c
 import { MovieService } from "./movie.service";
 import { throwIf } from "~/app/helpers/throw";
 import { VideoDTO } from "./dto/video.dto";
-import { RateBodyDTO } from "./dto/rate.body.dto";
+import { RateDTO } from "./dto/rate.dto";
 
 @Controller({
     version: "1",
@@ -43,7 +43,7 @@ export class MovieController {
 
     @Post(":movieId/rate")
     @ApiOperation({ summary: "Rate the movie" })
-    rate(@Param("movieId") movieId: number, @Body() data: RateBodyDTO) {
+    rate(@Param("movieId") movieId: number, @Body() data: RateDTO) {
         // this.movie.rate({userId: 1, movieId, value})
     }
 }

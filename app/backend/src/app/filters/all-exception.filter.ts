@@ -2,6 +2,7 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logge
 
 import { HttpAdapterHost } from "@nestjs/core";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime";
+import { ValidationException } from "~/app/exceptions/validation.exception";
 
 interface AxiosError extends Error {
     isAxiosError: true;
@@ -47,13 +48,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
                     httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
             }
         } else if (isAxiosError(exception)) {
-            httpStatus = exception.response.status;
+            httpStatus = exception.response?.status;
         }
 
         if (httpStatus === HttpStatus.INTERNAL_SERVER_ERROR) {
             this.logger.error(exception);
         }
 
-        httpAdapter.reply(ctx.getResponse(), undefined, httpStatus);
+        httpAdapter.reply(
+            ctx.getResponse(),
+            exception instanceof ValidationException
+                ? {
+                      errors: exception.getResponse(),
+                  }
+                : undefined,
+            httpStatus
+        );
     }
 }
