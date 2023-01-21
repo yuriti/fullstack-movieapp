@@ -1,11 +1,12 @@
-import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { Body, Controller, HttpStatus, Post, Res } from "@nestjs/common";
+import { ApiOperation, ApiTags, ApiCookieAuth } from "@nestjs/swagger";
+import { Body, Controller, HttpStatus, Post, Res, UseGuards } from "@nestjs/common";
 import { Response } from "express";
 import { JWT, COOKIE_AUTH } from "./auth.enum";
 
 import { AuthService } from "./auth.service";
 import { RegisterDTO } from "./dto/register.dto";
 import { LoginDTO } from "./dto/login.dto";
+import { AuthGuard } from "~/modules/auth/auth.guard";
 
 @Controller({
     version: "1",
@@ -35,6 +36,16 @@ export class AuthController {
         this.withAccessToken(res, login.accessToken);
 
         res.send();
+    }
+
+    @Post("logout")
+    @ApiOperation({ summary: "Logout" })
+    @ApiCookieAuth()
+    @UseGuards(AuthGuard)
+    logout(@Res() res: Response) {
+        this.withAccessToken(res, "");
+
+        res.status(HttpStatus.OK).send();
     }
 
     private withAccessToken(res: Response, accessToken: string) {

@@ -78,7 +78,7 @@ const AuthForm: React.FC<Props> = ({ className, ...props }) => {
             });
         }
 
-        await client.invalidateQueries(["profile"]);
+        await client.resetQueries(["profile"]);
     };
 
     return (

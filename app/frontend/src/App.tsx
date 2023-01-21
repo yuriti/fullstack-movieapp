@@ -1,18 +1,27 @@
-import { queryMovieRandom, queryMovieTrailer } from "features/movies/services";
+import { queryMoviePreferred, queryMovieRandom, queryMovieTrailer } from "features/movies/services";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import AuthForm from "features/auth/components/form";
 import Button from "components/button";
+import { MOVIE_RATE } from "features/movies/enums";
 import React from "react";
+import Topline from "components/topline";
 import YoutubeFrame from "components/youtube-frame";
 import classNames from "classnames";
+import { mutationMovieRate } from "./features/movies/services";
 import { queryProfile } from "features/users/service";
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 
 const App: React.FC = () => {
-    const { data: profile, isSuccess: isProfileSuccess } = useQuery(queryProfile());
+    const { isSuccess: isProfileSuccess, isFetched: isProfileFetched } = useQuery(queryProfile());
 
-    const { data: movie, refetch, isSuccess: isMovieSuccess, isLoading: isMovieLoading } = useQuery(queryMovieRandom());
+    const {
+        data: movie,
+        refetch,
+        isSuccess: isMovieSuccess,
+        isLoading: isMovieLoading,
+    } = useQuery({ ...(isProfileSuccess ? queryMoviePreferred() : queryMovieRandom()), enabled: isProfileFetched });
+
     const {
         data: tailer,
         isError: isTrailerError,
@@ -21,6 +30,8 @@ const App: React.FC = () => {
         ...queryMovieTrailer({ movieId: movie?.id ?? -1 }),
         enabled: isMovieSuccess,
     });
+
+    const { mutateAsync: mutateRate } = useMutation(mutationMovieRate());
 
     // The general status of the loading, taking into account the movie and trailer
     const isLoading = isMovieLoading || !isTrailerSuccess;
@@ -31,6 +42,16 @@ const App: React.FC = () => {
             refetch();
         }
     }, [isMovieLoading, isTrailerError, refetch]);
+
+    const handleRate = async (value: MOVIE_RATE) => {
+        if (!isMovieSuccess) {
+            return;
+        }
+
+        await mutateRate({ movieId: movie?.id, value });
+
+        refetch();
+    };
 
     return (
         <div className="tw-relative tw-min-h-screen tw-flex tw-justify-center tw-items-center tw-from-[#FFFFFF00] tw-to-[#ed28635c] tw-bg-gradient-to-b">
@@ -50,6 +71,8 @@ const App: React.FC = () => {
                 </div>
             )}
 
+            <Topline />
+
             <div className="tw-relative tw-space-y-6 container tw-w-full tw-z-10">
                 <div className="tw-flex tw-w-full tw-space-x-12">
                     <div className="tw-w-64 tw-flex-none"></div>
@@ -62,8 +85,8 @@ const App: React.FC = () => {
                         ) : (
                             <>
                                 <h1 className="tw-truncate tw-text-4xl tw-font-black">{movie?.title ?? "..."}</h1>
-                                <div className="tw-text-xl tw-flex-none tw-bg-[#8565CD] tw-bg-opacity-30 tw-rounded-xl tw-px-4 tw-py-1">
-                                    {movie?.score ?? 0} / 10
+                                <div className="tw-text-base tw-flex-none tw-whitespace-nowrap tw-bg-[#8565CD] tw-uppercase tw-bg-opacity-30 tw-rounded-xl tw-px-4 tw-py-1">
+                                    TMDB Rating: {movie?.score ?? 0} / 10
                                 </div>
                             </>
                         )}
@@ -113,10 +136,21 @@ const App: React.FC = () => {
                 <div className="tw-flex tw-w-full tw-space-x-12">
                     <div className="tw-w-64 tw-flex-none"></div>
                     <div className="tw-flex tw-justify-around tw-w-full">
-                        <Button isLoading={isLoading} className="tw-bg-[#8565CD] tw-w-48">
+                        <Button
+                            isLoading={isLoading}
+                            className="tw-bg-[#8565CD] tw-w-48"
+                            onClick={() => handleRate(MOVIE_RATE.DISLIKE)}
+                        >
                             Dislike
                         </Button>
-                        <Button isLoading={isLoading} className="tw-bg-[#ED2863] tw-w-48">
+                        <Button isLoading={isLoading} className="tw-bg-[#6E6E6E] tw-w-48" onClick={() => refetch()}>
+                            Refresh
+                        </Button>
+                        <Button
+                            isLoading={isLoading}
+                            className="tw-bg-[#ED2863] tw-w-48"
+                            onClick={() => handleRate(MOVIE_RATE.LIKE)}
+                        >
                             Like
                         </Button>
                     </div>
