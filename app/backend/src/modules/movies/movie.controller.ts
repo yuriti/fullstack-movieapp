@@ -1,11 +1,14 @@
 import { MovieDTO } from "./dto/movie.dto";
-import { ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { Body, Controller, Get, NotFoundException, Param, Post } from "@nestjs/common";
+import { ApiBearerAuth, ApiCookieAuth, ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Body, Controller, Get, NotFoundException, Param, Post, UseGuards } from "@nestjs/common";
 
 import { MovieService } from "./movie.service";
 import { throwIf } from "~/app/helpers/throw";
 import { VideoDTO } from "./dto/video.dto";
 import { RateDTO } from "./dto/rate.dto";
+import { AuthGuard } from "~/modules/auth/auth.guard";
+import { AuthUser } from "~/modules/auth/auth.decorator";
+import { User } from "@prisma/client";
 
 @Controller({
     version: "1",
@@ -28,7 +31,15 @@ export class MovieController {
 
     @Get("preferred")
     @ApiOperation({ summary: "We get one preferred movie for the user relative to his selected genres" })
-    fetchPreferred() {}
+    @ApiCookieAuth()
+    @UseGuards(AuthGuard)
+    async fetchPreferred(@AuthUser() user: User) {
+        const item = await this.movie.fetchOnePreferredForUser(user.id);
+
+        throwIf(!item, new NotFoundException());
+
+        return new MovieDTO(item);
+    }
 
     @Get(":movieId/trailer")
     @ApiOperation({ summary: "Get a movie trailer" })
@@ -43,7 +54,9 @@ export class MovieController {
 
     @Post(":movieId/rate")
     @ApiOperation({ summary: "Rate the movie" })
-    rate(@Param("movieId") movieId: number, @Body() data: RateDTO) {
-        // this.movie.rate({userId: 1, movieId, value})
+    @ApiCookieAuth()
+    @UseGuards(AuthGuard)
+    async rate(@AuthUser() user: User, @Param("movieId") movieId: number, @Body() data: RateDTO) {
+        await this.movie.rate({ userId: user.id, movieId, value: data.value });
     }
 }

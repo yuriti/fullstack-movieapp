@@ -6,7 +6,7 @@ import { ValidationException } from "~/app/exceptions/validation.exception";
 
 interface AxiosError extends Error {
     isAxiosError: true;
-    response: {
+    response?: {
         status: HttpStatus;
     };
 }
@@ -48,7 +48,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
                     httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
             }
         } else if (isAxiosError(exception)) {
-            httpStatus = exception.response?.status;
+            httpStatus = exception.response?.status ?? HttpStatus.SERVICE_UNAVAILABLE;
         }
 
         if (httpStatus === HttpStatus.INTERNAL_SERVER_ERROR) {

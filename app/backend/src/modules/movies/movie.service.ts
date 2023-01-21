@@ -1,9 +1,11 @@
 import { Get, Injectable, NotFoundException } from "@nestjs/common";
 
+import { GenreService } from "~/modules/genres/genre.service";
 import { MOVIE_RATE } from "./movie.enum";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "~/database/prisma.service";
 import { TmdbService } from "~/modules/tmdb/tmdb.service";
+import { UserService } from "~/modules/users/user.service";
 import { head } from "lodash";
 import { randomInt } from "crypto";
 
@@ -11,7 +13,12 @@ import { randomInt } from "crypto";
 
 @Injectable()
 export class MovieService {
-    constructor(private readonly prisma: PrismaService, private readonly tmdb: TmdbService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly tmdb: TmdbService,
+        private readonly user: UserService,
+        private readonly genre: GenreService
+    ) {}
 
     // We get any movie without a specific sample
     async fetchOneRandom() {
@@ -28,7 +35,17 @@ export class MovieService {
     }
 
     // We get one preferred movie for the user relative to his selected genres
-    fetchOnePreferredForUser(ctx: { userId: number }) {}
+    async fetchOnePreferredForUser(userId: number) {
+        const genres = await this.genre.fetchFavoritesForUser(userId);
+
+        const { results } = await this.tmdb.api.discoverMovie({
+            with_genres: genres.filter((item) => item.score > 0).join(","),
+            without_genres: genres.filter((item) => item.score < 0).join(","),
+            page: randomInt(1, 100),
+        });
+
+        return results[randomInt(0, results.length - 1)];
+    }
 
     // Rate the movie
     async rate(ctx: { userId: number; movieId: number; value: MOVIE_RATE }) {
