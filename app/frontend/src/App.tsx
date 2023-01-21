@@ -2,12 +2,15 @@ import { queryMoviePreferred, queryMovieRandom, queryMovieTrailer } from "featur
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import Button from "components/button";
+import FavoriteGenres from "features/genres/components/blocks/favorite-genres";
 import { MOVIE_RATE } from "features/movies/enums";
 import React from "react";
 import Topline from "components/topline";
 import YoutubeFrame from "components/youtube-frame";
 import classNames from "classnames";
 import { mutationMovieRate } from "./features/movies/services";
+import { orderBy } from "lodash";
+import { queryGenreFavorites } from "features/genres/services";
 import { queryProfile } from "features/users/service";
 import { useEffect } from "react";
 
@@ -54,15 +57,16 @@ const App: React.FC = () => {
             return;
         }
 
-        mutateRate({ movieId: movie.id, value });
-        handleReset();
+        await Promise.all([mutateRate({ movieId: movie.id, value }), handleReset()]);
+
+        client.invalidateQueries(["genres", "favorites"]);
     };
 
     return (
-        <div className="tw-relative tw-min-h-screen tw-flex tw-justify-center tw-items-center tw-from-[#FFFFFF00] tw-to-[#ed28635c] tw-bg-gradient-to-b">
+        <div className="tw-relative tw-pt-8 tw-pb-28 tw-min-h-screen tw-flex tw-justify-center tw-items-center tw-from-[#FFFFFF00] tw-to-[#ed28635c] tw-bg-gradient-to-b">
             <React.Suspense>
                 {!isProfileSuccess && (
-                    <div className="tw-from-[#000000ba] tw-flex tw-items-center tw-justify-center tw-to-[#ed2863ba] tw-bg-gradient-to-b tw-fixed tw-inset-0 tw-z-20">
+                    <div className="tw-from-[#000000ba] tw-flex tw-items-center tw-justify-center tw-to-[#ed2863ba] tw-bg-gradient-to-b tw-fixed tw-inset-0 tw-z-50">
                         <AuthForm className="tw-w-[28rem]" />
                     </div>
                 )}
@@ -80,87 +84,94 @@ const App: React.FC = () => {
 
             <Topline />
 
-            <div className="tw-relative tw-space-y-6 container tw-w-full tw-z-10">
-                <div className="tw-flex tw-w-full tw-space-x-12">
-                    <div className="tw-w-64 tw-flex-none"></div>
-                    <div className="tw-flex tw-justify-between tw-space-x-12 tw-items-end tw-w-full tw-min-w-0">
-                        {isLoading ? (
-                            <>
-                                <div className="tw-animate-pulse tw-bg-[#09011B] tw-rounded-xl tw-h-14 tw-w-4/6"></div>
-                                <div className="tw-animate-pulse tw-bg-[#09011B] tw-rounded-xl tw-h-14 tw-w-1/6"></div>
-                            </>
-                        ) : (
-                            <>
-                                <h1 className="tw-truncate tw-text-4xl tw-font-black">{movie?.title ?? "..."}</h1>
-                                <div className="tw-text-base tw-flex-none tw-whitespace-nowrap tw-bg-[#8565CD] tw-uppercase tw-bg-opacity-30 tw-rounded-xl tw-px-4 tw-py-1">
-                                    TMDB Rating: {movie?.score ?? 0} / 10
+            <div className="tw-relative container tw-w-full tw-z-10">
+                <div className="tw-space-y-6 tw-py-12">
+                    <div className="tw-flex tw-w-full tw-space-x-12">
+                        <div className="tw-w-64 tw-flex-none"></div>
+                        <div className="tw-flex tw-justify-between tw-space-x-12 tw-items-end tw-w-full tw-min-w-0">
+                            {isLoading ? (
+                                <>
+                                    <div className="tw-animate-pulse tw-bg-[#09011B] tw-rounded-xl tw-h-14 tw-w-4/6"></div>
+                                    <div className="tw-animate-pulse tw-bg-[#09011B] tw-rounded-xl tw-h-14 tw-w-1/6"></div>
+                                </>
+                            ) : (
+                                <>
+                                    <h1 className="tw-truncate tw-text-4xl tw-font-black">{movie?.title ?? "..."}</h1>
+                                    <div className="tw-text-base tw-flex-none tw-whitespace-nowrap tw-bg-[#8565CD] tw-uppercase tw-bg-opacity-30 tw-rounded-xl tw-px-4 tw-py-1">
+                                        TMDB Rating: {movie?.score ?? 0} / 10
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="tw-flex tw-w-full tw-space-x-12">
+                        <div
+                            className={classNames(
+                                "tw-w-64 tw-relative tw-flex-none tw-bg-[#09011B] tw-rounded-3xl tw-overflow-hidden tw-shadow-[0_8px_16px_rgba(0,0,0,0.2)]",
+                                isLoading && "tw-animate-pulse"
+                            )}
+                        >
+                            {!isLoading && !!movie?.posterPath && (
+                                <>
+                                    <img
+                                        className="tw-w-full tw-absolute tw-z-0 tw-inset-0 tw-h-full tw-object-cover tw-scale-150 tw-blur-md tw-object-center"
+                                        src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
+                                        alt="Background Blur"
+                                    />
+                                    <img
+                                        className="tw-w-full tw-relative tw-z-10 tw-h-full tw-object-contain tw-object-center"
+                                        src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
+                                        alt={movie.title}
+                                    />
+                                </>
+                            )}
+                        </div>
+
+                        <div className="tw-aspect-video tw-w-full tw-rounded-3xl tw-overflow-hidden tw-shadow-[0_8px_16px_rgba(0,0,0,0.2)]">
+                            {isLoading ? (
+                                <div className="tw-animate-pulse tw-bg-[#09011B] tw-w-full tw-h-full"></div>
+                            ) : (
+                                <div className="tw-bg-[#09011B] tw-w-full tw-h-full">
+                                    <YoutubeFrame
+                                        title={movie?.title}
+                                        src={tailer?.key}
+                                        autoplay={isProfileSuccess}
+                                        mute
+                                        className="tw-w-full tw-h-full"
+                                    ></YoutubeFrame>
                                 </div>
-                            </>
-                        )}
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="tw-flex tw-w-full tw-space-x-12">
+                        <div className="tw-w-64 tw-flex-none"></div>
+                        <div className="tw-flex tw-justify-around tw-w-full">
+                            <Button
+                                isLoading={isLoading}
+                                className="tw-bg-[#8565CD] tw-w-48"
+                                onClick={() => handleRate(MOVIE_RATE.DISLIKE)}
+                            >
+                                Dislike
+                            </Button>
+                            <Button isLoading={isLoading} className="tw-bg-[#6E6E6E] tw-w-48" onClick={() => refetch()}>
+                                Refresh
+                            </Button>
+                            <Button
+                                isLoading={isLoading}
+                                className="tw-bg-[#ED2863] tw-w-48"
+                                onClick={() => handleRate(MOVIE_RATE.LIKE)}
+                            >
+                                Like
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
-                <div className="tw-flex tw-w-full tw-space-x-12">
-                    <div
-                        className={classNames(
-                            "tw-w-64 tw-relative tw-flex-none tw-bg-[#09011B] tw-rounded-3xl tw-overflow-hidden tw-shadow-[0_8px_16px_rgba(0,0,0,0.2)]",
-                            isLoading && "tw-animate-pulse"
-                        )}
-                    >
-                        {!isLoading && !!movie?.posterPath && (
-                            <>
-                                <img
-                                    className="tw-w-full tw-absolute tw-z-0 tw-inset-0 tw-h-full tw-object-cover tw-scale-150 tw-blur-md tw-object-center"
-                                    src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
-                                    alt="Background Blur"
-                                />
-                                <img
-                                    className="tw-w-full tw-relative tw-z-10 tw-h-full tw-object-contain tw-object-center"
-                                    src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
-                                    alt={movie.title}
-                                />
-                            </>
-                        )}
-                    </div>
-
-                    <div className="tw-aspect-video tw-w-full tw-rounded-3xl tw-overflow-hidden tw-shadow-[0_8px_16px_rgba(0,0,0,0.2)]">
-                        {isLoading ? (
-                            <div className="tw-animate-pulse tw-bg-[#09011B] tw-w-full tw-h-full"></div>
-                        ) : (
-                            <div className="tw-bg-[#09011B] tw-w-full tw-h-full">
-                                <YoutubeFrame
-                                    title={movie?.title}
-                                    src={tailer?.key}
-                                    autoplay={isProfileSuccess}
-                                    mute
-                                    className="tw-w-full tw-h-full"
-                                ></YoutubeFrame>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="tw-flex tw-w-full tw-space-x-12">
+                <div className="tw-flex tw-mt-12 tw-w-full tw-space-x-12">
                     <div className="tw-w-64 tw-flex-none"></div>
-                    <div className="tw-flex tw-justify-around tw-w-full">
-                        <Button
-                            isLoading={isLoading}
-                            className="tw-bg-[#8565CD] tw-w-48"
-                            onClick={() => handleRate(MOVIE_RATE.DISLIKE)}
-                        >
-                            Dislike
-                        </Button>
-                        <Button isLoading={isLoading} className="tw-bg-[#6E6E6E] tw-w-48" onClick={() => refetch()}>
-                            Refresh
-                        </Button>
-                        <Button
-                            isLoading={isLoading}
-                            className="tw-bg-[#ED2863] tw-w-48"
-                            onClick={() => handleRate(MOVIE_RATE.LIKE)}
-                        >
-                            Like
-                        </Button>
-                    </div>
+                    <FavoriteGenres className="tw-w-full" />
                 </div>
             </div>
         </div>
