@@ -11,7 +11,7 @@ const Button: React.FC<Props> = ({ isLoading, className, children, ...props }) =
         {...props}
         className={classNames(
             className,
-            "tw-rounded-xl tw-h-14 tw-flex tw-items-center tw-justify-center",
+            "tw-rounded-xl tw-h-14 tw-flex tw-items-center tw-justify-center tw-transition-transform tw-duration-500 hover:tw-scale-110",
             isLoading && "tw-animate-pulse"
         )}
     >

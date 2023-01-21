@@ -43,15 +43,18 @@ export class AuthController {
     @ApiCookieAuth()
     @UseGuards(AuthGuard)
     logout(@Res() res: Response) {
-        this.withAccessToken(res, "");
+        this.withAccessToken(res);
 
         res.status(HttpStatus.OK).send();
     }
 
-    private withAccessToken(res: Response, accessToken: string) {
+    private withAccessToken(res: Response, accessToken?: string) {
         const expires = new Date();
-        expires.setDate(expires.getDate() + JWT.EXPIRES_DAYS);
 
-        res.cookie(COOKIE_AUTH.ACCESS_TOKEN, accessToken, { expires });
+        if (accessToken) {
+            expires.setDate(expires.getDate() + JWT.EXPIRES_DAYS);
+        }
+
+        res.cookie(COOKIE_AUTH.ACCESS_TOKEN, accessToken ?? "", { expires });
     }
 }

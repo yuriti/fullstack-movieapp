@@ -1,7 +1,6 @@
 import { queryMoviePreferred, queryMovieRandom, queryMovieTrailer } from "features/movies/services";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import AuthForm from "features/auth/components/form";
 import Button from "components/button";
 import { MOVIE_RATE } from "features/movies/enums";
 import React from "react";
@@ -12,7 +11,11 @@ import { mutationMovieRate } from "./features/movies/services";
 import { queryProfile } from "features/users/service";
 import { useEffect } from "react";
 
+const AuthForm = React.lazy(() => import(`features/auth/components/form`));
+
 const App: React.FC = () => {
+    const client = useQueryClient();
+
     const { isSuccess: isProfileSuccess, isFetched: isProfileFetched } = useQuery(queryProfile());
 
     const {
@@ -36,30 +39,34 @@ const App: React.FC = () => {
     // The general status of the loading, taking into account the movie and trailer
     const isLoading = isMovieLoading || !isTrailerSuccess;
 
+    const handleReset = () =>
+        Promise.all([client.resetQueries(["movie", "preferred"]), client.resetQueries(["movie", "random"])]);
+
     // We make a repeat request if the trailer was not found
     useEffect(() => {
-        if (!isMovieLoading && isTrailerError) {
-            refetch();
+        if (isTrailerError) {
+            handleReset();
         }
-    }, [isMovieLoading, isTrailerError, refetch]);
+    }, [isTrailerError]);
 
     const handleRate = async (value: MOVIE_RATE) => {
-        if (!isMovieSuccess) {
+        if (isLoading || !isMovieSuccess) {
             return;
         }
 
-        await mutateRate({ movieId: movie?.id, value });
-
-        refetch();
+        mutateRate({ movieId: movie.id, value });
+        handleReset();
     };
 
     return (
         <div className="tw-relative tw-min-h-screen tw-flex tw-justify-center tw-items-center tw-from-[#FFFFFF00] tw-to-[#ed28635c] tw-bg-gradient-to-b">
-            {!isProfileSuccess && (
-                <div className="tw-from-[#000000ba] tw-flex tw-items-center tw-justify-center tw-to-[#ed2863ba] tw-bg-gradient-to-b tw-fixed tw-inset-0 tw-z-20">
-                    <AuthForm className="tw-w-[28rem]" />
-                </div>
-            )}
+            <React.Suspense>
+                {!isProfileSuccess && (
+                    <div className="tw-from-[#000000ba] tw-flex tw-items-center tw-justify-center tw-to-[#ed2863ba] tw-bg-gradient-to-b tw-fixed tw-inset-0 tw-z-20">
+                        <AuthForm className="tw-w-[28rem]" />
+                    </div>
+                )}
+            </React.Suspense>
 
             {!isLoading && !!movie?.backdropPath && (
                 <div className="tw-fixed tw-opacity-20 tw-inset-0 tw-z-0">
@@ -124,7 +131,7 @@ const App: React.FC = () => {
                                 <YoutubeFrame
                                     title={movie?.title}
                                     src={tailer?.key}
-                                    autoplay={false}
+                                    autoplay={isProfileSuccess}
                                     mute
                                     className="tw-w-full tw-h-full"
                                 ></YoutubeFrame>
