@@ -49,3 +49,5 @@ services:
     working_dir: /app
     volumes:
       - ../app/frontend:/app
+    ports:
+      - 3000:3000
