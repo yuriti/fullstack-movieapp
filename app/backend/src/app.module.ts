@@ -6,9 +6,10 @@ import { AuthModule } from "~/modules/auth/auth.module";
 import { DatabaseModule } from "~/database/database.module";
 import { GenreModule } from "~/modules/genres/genre.module";
 import { MovieModule } from "~/modules/movies/movie.module";
+import { UserModule } from "~/modules/users/user.module";
 
 @Module({
-    imports: [DatabaseModule, AuthModule, MovieModule, GenreModule],
+    imports: [DatabaseModule, AuthModule, UserModule, MovieModule, GenreModule],
     providers: [
         {
             provide: APP_INTERCEPTOR,

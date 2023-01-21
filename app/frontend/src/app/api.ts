@@ -59,6 +59,7 @@ export function queryApi<
     return {
         useErrorBoundary: (error) => error === HTTP_STATUS.SERVICE_UNAVAILABLE,
         retry: false,
+        refetchOnWindowFocus: false,
         ...options,
     };
 }

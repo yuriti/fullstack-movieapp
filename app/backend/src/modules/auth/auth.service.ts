@@ -14,7 +14,10 @@ export class AuthService {
     async login(ctx: { username: string; password: string }) {
         const user = await this.user.findOneByUsername(ctx.username);
 
-        throwIf(!this.passwordCompare({ password: ctx.password, hash: user.password }), new BadRequestException());
+        throwIf(
+            !(await this.passwordCompare({ password: ctx.password, hash: user.password })),
+            new BadRequestException()
+        );
 
         return { user, accessToken: await this.jwt.signAsync({ userId: user.id } as Payload) };
     }

@@ -1,13 +1,17 @@
 import { queryMovieRandom, queryMovieTrailer } from "features/movies/services";
 
+import AuthForm from "features/auth/components/form";
 import Button from "components/button";
 import React from "react";
 import YoutubeFrame from "components/youtube-frame";
 import classNames from "classnames";
+import { queryProfile } from "features/users/service";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 const App: React.FC = () => {
+    const { data: profile, isSuccess: isProfileSuccess } = useQuery(queryProfile());
+
     const { data: movie, refetch, isSuccess: isMovieSuccess, isLoading: isMovieLoading } = useQuery(queryMovieRandom());
     const {
         data: tailer,
@@ -26,12 +30,18 @@ const App: React.FC = () => {
         if (!isMovieLoading && isTrailerError) {
             refetch();
         }
-    }, [isMovieLoading, isTrailerError]);
+    }, [isMovieLoading, isTrailerError, refetch]);
 
     return (
         <div className="tw-relative tw-min-h-screen tw-flex tw-justify-center tw-items-center tw-from-[#FFFFFF00] tw-to-[#ed28635c] tw-bg-gradient-to-b">
+            {!isProfileSuccess && (
+                <div className="tw-from-[#000000ba] tw-flex tw-items-center tw-justify-center tw-to-[#ed2863ba] tw-bg-gradient-to-b tw-fixed tw-inset-0 tw-z-20">
+                    <AuthForm className="tw-w-[28rem]" />
+                </div>
+            )}
+
             {!isLoading && !!movie?.backdropPath && (
-                <div className="tw-absolute tw-opacity-20 tw-inset-0 tw-z-0">
+                <div className="tw-fixed tw-opacity-20 tw-inset-0 tw-z-0">
                     <img
                         className="tw-w-full tw-h-full tw-object-cover tw-object-bottom"
                         src={`https://image.tmdb.org/t/p/original/${movie.backdropPath}`}
@@ -87,12 +97,15 @@ const App: React.FC = () => {
                         {isLoading ? (
                             <div className="tw-animate-pulse tw-bg-[#09011B] tw-w-full tw-h-full"></div>
                         ) : (
-                            <YoutubeFrame
-                                src={tailer?.key}
-                                autoplay
-                                mute
-                                className="tw-w-full tw-h-full"
-                            ></YoutubeFrame>
+                            <div className="tw-bg-[#09011B] tw-w-full tw-h-full">
+                                <YoutubeFrame
+                                    title={movie?.title}
+                                    src={tailer?.key}
+                                    autoplay={false}
+                                    mute
+                                    className="tw-w-full tw-h-full"
+                                ></YoutubeFrame>
+                            </div>
                         )}
                     </div>
                 </div>

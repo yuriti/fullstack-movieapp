@@ -1,5 +1,5 @@
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { Body, Controller, Post, Res } from "@nestjs/common";
+import { Body, Controller, HttpStatus, Post, Res } from "@nestjs/common";
 import { Response } from "express";
 import { JWT, COOKIE_AUTH } from "./auth.enum";
 
@@ -22,7 +22,7 @@ export class AuthController {
 
         this.withAccessToken(res, login.accessToken);
 
-        res.send();
+        res.status(HttpStatus.OK).send();
     }
 
     @Post("signup")
