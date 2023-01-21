@@ -26,7 +26,6 @@ async function bootstrap() {
         .setTitle("Movie APP")
         .setDescription("Define your genre of films")
         .setVersion("1.0")
-        .addBearerAuth()
         .addCookieAuth(COOKIE_AUTH.ACCESS_TOKEN)
         .build();
     const document = SwaggerModule.createDocument(app, config);
